@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: acidanthera/MacKernelSDK
-          ref: 05094e5e88cec7caedbfb35e8449ed0db94bf95
+          ref: 3f750085caa17ec3a7880f11c11bf4f48cd6a164
           path: source/MacKernelSDK
           persist-credentials: false
 
