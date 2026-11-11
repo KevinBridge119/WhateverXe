@@ -1,0 +1,75 @@
+name: Build exact WhateverXe eDP handoff
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build WEX and AppleIntelTGLCompat 0.7.0
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact eDP handoff source
+        uses: actions/checkout@v4
+        with:
+          repository: Thatisjigen/WhateverXe
+          ref: 45d87ab0f7c5dac584dd4b7b5c3053fb53a4b37e
+          path: source
+          persist-credentials: false
+
+      - name: Checkout MacKernelSDK
+        uses: actions/checkout@v4
+        with:
+          repository: acidanthera/MacKernelSDK
+          ref: 05094e5e88cec7caedbfb35e8449ed0db94bf95
+          path: source/MacKernelSDK
+          persist-credentials: false
+
+      - name: Checkout Lilu 1.7.2
+        uses: actions/checkout@v4
+        with:
+          repository: acidanthera/Lilu
+          ref: 1.7.2
+          path: source/build/dependencies/Lilu
+          persist-credentials: false
+
+      - name: Prepare Lilu development files
+        shell: bash
+        run: |
+          cd source
+          mkdir -p Lilu.kext/Contents/Resources
+          ln -s "$GITHUB_WORKSPACE/source/build/dependencies/Lilu/Lilu/Headers" \
+            Lilu.kext/Contents/Resources/Headers
+          ln -s "$GITHUB_WORKSPACE/source/build/dependencies/Lilu/Lilu/Library" \
+            Lilu.kext/Contents/Resources/Library
+
+      - name: Run tests and build release
+        shell: bash
+        run: |
+          cd source
+          python3 tools/test.py
+          python3 tools/build.py --release --output build/RELEASE
+
+      - name: Verify both kexts exist
+        shell: bash
+        run: |
+          test -f source/build/RELEASE/WhateverXe.kext/Contents/MacOS/WhateverXe
+          test -f source/build/RELEASE/AppleIntelTGLCompat.kext/Contents/MacOS/AppleIntelTGLCompat
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" \
+            source/build/RELEASE/WhateverXe.kext/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" \
+            source/build/RELEASE/AppleIntelTGLCompat.kext/Contents/Info.plist
+
+      - name: Upload exact handoff kexts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDP-Handoff-Exact-45d87ab
+          path: |
+            source/build/RELEASE/WhateverXe.kext
+            source/build/RELEASE/AppleIntelTGLCompat.kext
+            source/build/RELEASE/build-manifest.json
+          if-no-files-found: error
